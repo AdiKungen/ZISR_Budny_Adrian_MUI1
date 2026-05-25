@@ -1,6 +1,8 @@
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
+import tkinter as tk
+from tkinter import ttk
 
 def sterownik_pralki():
     waga_ubr = ctrl.Antecedent(np.arange(1, 11, 1), 'waga_ubr')
@@ -32,37 +34,71 @@ def sterownik_pralki():
 
     reguly = [
         ctrl.Rule(waga_ubr['lekka'] & poz_zabru['lekki'], (czas_pran['krotki'], ilosc_deter['mala'], moc_wirow['wolna'])),
-        ctrl.Rule(waga_ubr['lekka'] & poz_zabru['normalny'], (czas_pran['sredni'], ilosc_deter['srednia'], moc_wirow['srednia'])),
-        ctrl.Rule(waga_ubr['lekka'] & poz_zabru['mocny'], (czas_pran['dlugi'], ilosc_deter['duza'], moc_wirow['srednia'])),
+        ctrl.Rule(waga_ubr['lekka'] & poz_zabru['normalny'], (czas_pran['krotki'], ilosc_deter['srednia'], moc_wirow['wolna'])),
+        ctrl.Rule(waga_ubr['lekka'] & poz_zabru['mocny'], (czas_pran['sredni'], ilosc_deter['srednia'], moc_wirow['srednia'])),
         
-        ctrl.Rule(waga_ubr['srednia'] & poz_zabru['lekki'], (czas_pran['krotki'], ilosc_deter['srednia'], moc_wirow['srednia'])),
+        ctrl.Rule(waga_ubr['srednia'] & poz_zabru['lekki'], (czas_pran['krotki'], ilosc_deter['mala'], moc_wirow['srednia'])),
         ctrl.Rule(waga_ubr['srednia'] & poz_zabru['normalny'], (czas_pran['sredni'], ilosc_deter['srednia'], moc_wirow['srednia'])),
-        ctrl.Rule(waga_ubr['srednia'] & poz_zabru['mocny'], (czas_pran['dlugi'], ilosc_deter['duza'], moc_wirow['szybka'])),
+        ctrl.Rule(waga_ubr['srednia'] & poz_zabru['mocny'], (czas_pran['sredni'], ilosc_deter['duza'], moc_wirow['szybka'])),
         
         ctrl.Rule(waga_ubr['ciezka'] & poz_zabru['lekki'], (czas_pran['sredni'], ilosc_deter['srednia'], moc_wirow['srednia'])),
-        ctrl.Rule(waga_ubr['ciezka'] & poz_zabru['normalny'], (czas_pran['dlugi'], ilosc_deter['duza'], moc_wirow['szybka'])),
+        ctrl.Rule(waga_ubr['ciezka'] & poz_zabru['normalny'], (czas_pran['sredni'], ilosc_deter['duza'], moc_wirow['szybka'])),
         ctrl.Rule(waga_ubr['ciezka'] & poz_zabru['mocny'], (czas_pran['dlugi'], ilosc_deter['duza'], moc_wirow['szybka']))
     ]
 
     system = ctrl.ControlSystem(reguly)
     return ctrl.ControlSystemSimulation(system)
 
-if __name__ == "__main__":
-    symulator = sterownik_pralki()
+symulator = sterownik_pralki()
 
-    zm_waga_ubr = 4.5
-    zm_poz_zabru = 60.0
+def oblicz_rozmycie(event=None):
+    zm_waga_ubr = slider_waga_ubr.get()
+    zm_poz_zabru = slider_poz_zabru.get()
     
     symulator.input['waga_ubr'] = zm_waga_ubr
     symulator.input['poz_zabru'] = zm_poz_zabru
-    
     symulator.compute()
+    
+    lbl_wynik_czas_pran.config(text=f"{symulator.output['czas_pran']:.1f} min")
+    lbl_wynik_ilosc_deter.config(text=f"{symulator.output['ilosc_deter']:.1f} ml")
+    lbl_wynik_moc_wirow.config(text=f"{symulator.output['moc_wirow']:.0f} RPM")
 
-    print("Dane wejściowe:")
-    print(f"Waga ubrań: {zm_waga_ubr:.1f} kg")
-    print(f"Poziom zabrudzenia: {zm_poz_zabru:.1f} %")
-    print("")
-    print("Dane wyjściowe:")
-    print(f"Czas prania: {symulator.output['czas_pran']:.1f} min")
-    print(f"Ilość detergentu: {symulator.output['ilosc_deter']:.1f} ml")
-    print(f"Moc wirowania: {symulator.output['moc_wirow']:.0f} RPM")
+root = tk.Tk()
+root.title("Sterownik rozmyty - Inteligenta pralka")
+root.geometry("400x350")
+root.configure(padx=20, pady=20)
+
+style = ttk.Style()
+style.configure("TLabel", font=("Arial", 12))
+
+ttk.Label(root, text="Waga ubrań (kg):", font=("Arial", 10, "bold")).pack(anchor="w")
+slider_waga_ubr = tk.Scale(root, from_=0.5, to=10, resolution=0.5, orient="horizontal", length=350, command=oblicz_rozmycie)
+slider_waga_ubr.set(5.0)
+slider_waga_ubr.pack()
+
+ttk.Label(root, text="Poziom zabrudzenia (%):", font=("Arial", 10, "bold")).pack(anchor="w", pady=(10, 0))
+slider_poz_zabru = tk.Scale(root, from_=1, to=100, resolution=1, orient="horizontal", length=350, command=oblicz_rozmycie)
+slider_poz_zabru.set(50.0)
+slider_poz_zabru.pack()
+
+ttk.Separator(root, orient="horizontal").pack(fill="x", pady=20)
+
+frame_wyniki = ttk.Frame(root)
+frame_wyniki.pack(fill="x")
+
+ttk.Label(frame_wyniki, text="Czas prania:").grid(row=0, column=0, sticky="w", pady=5)
+lbl_wynik_czas_pran = ttk.Label(frame_wyniki, text="0.0 min", font=("Arial", 12, "bold"), foreground="blue")
+lbl_wynik_czas_pran.grid(row=0, column=1, sticky="e")
+
+ttk.Label(frame_wyniki, text="Ilość detergentu:").grid(row=1, column=0, sticky="w", pady=5)
+lbl_wynik_ilosc_deter = ttk.Label(frame_wyniki, text="0.0 ml", font=("Arial", 12, "bold"), foreground="blue")
+lbl_wynik_ilosc_deter.grid(row=1, column=1, sticky="e")
+
+ttk.Label(frame_wyniki, text="Moc wirowania:").grid(row=2, column=0, sticky="w", pady=5)
+lbl_wynik_moc_wirow = ttk.Label(frame_wyniki, text="0 RPM", font=("Arial", 12, "bold"), foreground="blue")
+lbl_wynik_moc_wirow.grid(row=2, column=1, sticky="e")
+
+frame_wyniki.columnconfigure(1, weight=1)
+
+oblicz_rozmycie()
+root.mainloop()
